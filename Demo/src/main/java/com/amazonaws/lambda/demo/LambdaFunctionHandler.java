@@ -19,34 +19,43 @@ public class LambdaFunctionHandler implements RequestHandler<Map<String,Object>,
 
         Map<String, Object> map = null;
         try {
-            context.getLogger().log("Input type is " + input.getClass().getName());
-            String name = getMap(input, new String[] { "request", "intent", "slots", "name" }).get("value").toString();
-        	
-            JSONObject responseJson = new JSONObject();
-        	addOutputSpeech(responseJson, "Hello " + name);
-            JSONObject outputJson = new JSONObject();
-        	outputJson.put("version", "1.0");
-        	outputJson.put("sessionAttributes", new JSONObject());
-        	outputJson.put("shouldEndSession", false);
-        	outputJson.put("response", responseJson);
-            context.getLogger().log("Output: " + outputJson);
+            // Default response
+            JSONObject outputJson = buildResponse("This is not expected. Please try again.", true /* end session */);
+
+            Map<String,Object> requestMap = getMap(input, "request");
+            Object type = (requestMap == null) ? null : requestMap.get("type");
+            if(type == null) {
+                outputJson = buildResponseBody("I don't know how to handle that.", true /* end session */);
+            }
+            else if(type.equals("LaunchRequest")) {
+                outputJson = buildResponseBody("Hello.  I don't recognize you yet.", false /* do not end session */);
+            }
+            else if(type.equals("IntentRequest")) {
+            	Map<String,Object> nameMap = getMap(requestMap, new String[] { "intent", "slots", "name" });
+            	Object value = (nameMap == null) ? null : nameMap.get("value");
+            	if(value == null) {
+                	outputJson = buildResponseBody("Hello.  Can you tell me your name?", false /* do not end session */);
+            	}
+            	else {
+                	outputJson = buildResponseBody("Hello " + value.toString(), true /* end session */);
+            	}
+            }   
             
     		ObjectMapper mapper = new ObjectMapper();
-
     		map = mapper.readValue(outputJson.toString(), new TypeReference<Map<String, Object>>() {});
         }
         catch (Exception e) {
-        	context.getLogger().log("EXCEPTION: " + e.getMessage());
+        	context.getLogger().log("EXCEPTION: " + e.getMessage() + "\n");
         }
  
-        context.getLogger().log("Output Map: " + map);
+		context.getLogger().log("Output Map: " + map + "\n");
 
         return map;
     }
     
     static Map<String,Object> getMap(Map<String,Object> map, String[] keys) {
 		int count = (keys == null) ? 0: keys.length;
-			for(int i = 0;i < count;i++) {
+		for(int i = 0;i < count;i++) {
 			if(map == null) {
 				break;
 			}
@@ -65,10 +74,28 @@ public class LambdaFunctionHandler implements RequestHandler<Map<String,Object>,
     	}
     }
     
-    private void addOutputSpeech(JSONObject json, String text) throws Exception {
-    	JSONObject textJson = new JSONObject();
-    	textJson.put("type", "PlainText");
-    	textJson.put("text", text);
-    	json.put("outputSpeech", textJson);
+    private JSONObject buildResponseBody(String text, boolean endSession) throws Exception {
+        JSONObject responseBody = new JSONObject();
+        responseBody.put("version", "1.0");
+        responseBody.put("sessionAttributes", new JSONObject());
+        responseBody.put("response", buildResponse(text, endSession));
+
+        return responseBody;
+    }
+
+    private JSONObject buildResponse(String text, boolean endSession) throws Exception {
+        JSONObject response = new JSONObject();
+        response.put("outputSpeech", buildOutputSpeech(text));
+        response.put("shouldEndSession", endSession);
+
+        return response;
+    }
+
+    private JSONObject buildOutputSpeech(String message) throws Exception {
+    	JSONObject text = new JSONObject();
+    	text.put("type", "PlainText");
+    	text.put("text", message);
+    	
+    	return(text);
     }
 }
