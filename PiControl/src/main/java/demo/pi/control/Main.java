@@ -9,6 +9,8 @@ public class Main {
 
 	private static final String TOPIC = "demo/command";
 	
+	private static final String CAMERA_IMAGE_CAPTURE = "{\"type\": \"camera\", \"action\": \"capture\", \"arguments\": {\"mode\": \"image\", \"tag\": \"joe\"}}";
+
 	private enum Mode {
 		EDGE, CLIENT	
 	}
@@ -37,7 +39,7 @@ public class Main {
 		        client.subscribe(topic);
 
 		        if (mode.equals(Mode.CLIENT)) {
-		        	client.publish(TOPIC, AWSIotQos.QOS0, "Test");	  
+                    client.publish(TOPIC, AWSIotQos.QOS0, CAMERA_IMAGE_CAPTURE);
 		        }
 
 		        while (true) {
